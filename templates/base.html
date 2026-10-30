@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}Dashboard{% endblock %} · OS Resource Simulator</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+</head>
+<body>
+<nav class="navbar">
+    <span class="brand">OS RESOURCE SIMULATOR</span>
+    <div class="links">
+        <a href="/" class="{{ 'active' if request.endpoint == 'home' }}">Dashboard</a>
+        <a href="/cpu" class="{{ 'active' if request.endpoint == 'cpu' }}">CPU</a>
+        <a href="/memory" class="{{ 'active' if request.endpoint == 'memory' }}">Memory</a>
+        <a href="/pages" class="{{ 'active' if request.endpoint == 'pages' }}">Paging</a>
+        <a href="/deadlock" class="{{ 'active' if request.endpoint == 'deadlock_page' }}">Deadlock</a>
+    </div>
+</nav>
+<main class="container">
+{% block content %}{% endblock %}
+</main>
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

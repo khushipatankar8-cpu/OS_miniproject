@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}CPU Scheduling{% endblock %}
+{% block content %}
+<h1>CPU Scheduling</h1>
+<div class="panel">
+    <div class="row">
+        <label>Algorithm
+            <select id="algo">
+                <option>FCFS</option><option>SJF</option><option>SRTF</option>
+                <option>Priority</option><option selected>Round Robin</option>
+            </select>
+        </label>
+        <label id="qWrap">Time Quantum <input type="number" id="quantum" value="2" min="1"></label>
+    </div>
+    <table id="inputTable">
+        <thead><tr><th>PID</th><th>Arrival</th><th>Burst</th><th>Priority</th><th></th></tr></thead>
+        <tbody></tbody>
+    </table>
+    <button id="addRow" class="btn secondary">+ Add process</button>
+    <button id="simulate" class="btn">Simulate</button>
+    <p class="hint">Lower priority number = higher priority.</p>
+</div>
+<div id="error" class="error" hidden></div>
+<div id="output" hidden>
+    <div class="panel"><h2>Gantt Chart</h2><div id="gantt" class="gantt-wrap"></div></div>
+    <div class="panel"><h2>Results</h2><div id="result"></div><div id="averages" class="stats"></div></div>
+    <div class="panel"><h2>Algorithm Comparison</h2><canvas id="cmpChart" height="110"></canvas><div id="cmpTable"></div></div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const tbody = document.querySelector('#inputTable tbody');
+function addRow(pid, at, bt, pr) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td><input value="${pid}"></td><td><input type="number" min="0" value="${at}"></td>
+        <td><input type="number" min="1" value="${bt}"></td><td><input type="number" value="${pr}"></td>
+        <td><button class="btn danger small">✕</button></td>`;
+    tr.querySelector('button').onclick = () => tr.remove();
+    tbody.appendChild(tr);
+}
+[['P1',0,5,2],['P2',1,3,1],['P3',2,8,3],['P4',3,2,2]].forEach(r => addRow(...r));
+document.getElementById('addRow').onclick = () => addRow('P' + (tbody.rows.length + 1), 0, 1, 1);
+const algo = document.getElementById('algo');
+const qWrap = document.getElementById('qWrap');
+algo.onchange = () => qWrap.hidden = algo.value !== 'Round Robin';
+algo.onchange();
+
+document.getElementById('simulate').onclick = async () => {
+    const err = document.getElementById('error');
+    err.hidden = true;
+    const processes = [...tbody.rows].map(tr => {
+        const i = tr.querySelectorAll('input');
+        return {pid: i[0].value, at: i[1].value, bt: i[2].value, pr: i[3].value};
+    });
+    try {
+        const data = await postJSON('/api/cpu', {algorithm: algo.value,
+            quantum: document.getElementById('quantum').value, processes});
+        render(data);
+    } catch (e) { showError(err, e.message); document.getElementById('output').hidden = true; }
+};
+
+function render({result, comparison}) {
+    document.getElementById('output').hidden = false;
+    const colors = {};
+    result.processes.forEach((p, i) => colors[p.pid] = PALETTE[i % PALETTE.length]);
+    const total = result.gantt[result.gantt.length - 1].end;
+    document.getElementById('gantt').innerHTML = '<div class="gantt">' + result.gantt.map(s =>
+        `<div class="seg" style="flex:${s.end - s.start};background:${s.pid === 'Idle' ? '#bbb' : colors[s.pid]}">
+         ${esc(s.pid)}<span class="tick">${s.start}</span></div>`).join('') +
+        `<span class="tick end">${total}</span></div>`;
+    document.getElementById('result').innerHTML = table(
+        ['Process', 'AT', 'BT', 'Priority', 'CT', 'TAT', 'WT', 'RT'],
+        result.processes.map(p => [p.pid, p.at, p.bt, p.pr, p.ct, p.tat, p.wt, p.rt]));
+    document.getElementById('averages').innerHTML =
+        stat('Average Waiting Time', result.avg_wt) + stat('Average Turnaround Time', result.avg_tat) +
+        stat('Average Response Time', result.avg_rt);
+    const labels = comparison.map(c => c.algorithm);
+    drawChart('cmpChart', 'bar', labels, [
+        {label: 'Avg Waiting Time', data: comparison.map(c => c.avg_wt), backgroundColor: '#3b82f6'},
+        {label: 'Avg Turnaround Time', data: comparison.map(c => c.avg_tat), backgroundColor: '#f59e0b'},
+        {label: 'Avg Response Time', data: comparison.map(c => c.avg_rt), backgroundColor: '#10b981'}]);
+    document.getElementById('cmpTable').innerHTML = table(['Algorithm', 'Avg WT', 'Avg TAT', 'Avg RT'],
+        comparison.map(c => [c.algorithm, c.avg_wt, c.avg_tat, c.avg_rt]));
+}
+</script>
+{% endblock %}

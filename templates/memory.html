@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Memory Management{% endblock %}
+{% block content %}
+<h1>Memory Management</h1>
+<div class="panel">
+    <div class="row">
+        <label>Algorithm
+            <select id="algo"><option>First Fit</option><option>Best Fit</option><option>Worst Fit</option><option>Next Fit</option></select>
+        </label>
+    </div>
+    <label class="block">Memory blocks (space separated)<input id="blocks" value="100 500 200 300 600"></label>
+    <label class="block">Process sizes (space separated)<input id="procs" value="212 417 112 426"></label>
+    <button id="run" class="btn">Allocate</button>
+    <p class="hint">Fixed partitions: each block holds at most one process.</p>
+</div>
+<div id="error" class="error" hidden></div>
+<div id="output" hidden>
+    <div class="panel"><h2>Allocation</h2><div id="alloc"></div><div id="stats" class="stats"></div></div>
+    <div class="panel"><h2>Memory Blocks</h2><div id="blockmap"></div></div>
+    <div class="panel"><h2>Algorithm Comparison</h2><canvas id="cmpChart" height="110"></canvas><div id="cmpTable"></div></div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+document.getElementById('run').onclick = async () => {
+    const err = document.getElementById('error'); err.hidden = true;
+    try {
+        const data = await postJSON('/api/memory', {algorithm: document.getElementById('algo').value,
+            blocks: parseNums(document.getElementById('blocks').value),
+            processes: parseNums(document.getElementById('procs').value)});
+        render(data);
+    } catch (e) { showError(err, e.message); document.getElementById('output').hidden = true; }
+};
+function render({result: r, comparison}) {
+    document.getElementById('output').hidden = false;
+    document.getElementById('alloc').innerHTML = table(['Process', 'Size', 'Allocation', 'Block Size', 'Internal Frag.'],
+        r.allocations.map(a => [a.pid, a.size, a.block ? 'Block ' + a.block : 'Not Allocated',
+            a.block_size ?? '-', a.internal ?? '-']));
+    document.getElementById('stats').innerHTML = stat('Internal Fragmentation', r.internal_frag) +
+        stat('External Fragmentation', r.external_frag) + stat('Memory Utilization', r.utilization + '%');
+    document.getElementById('blockmap').innerHTML = table(['Block', 'Size', 'Process', 'Free Space'],
+        r.blocks.map(b => ['Block ' + b.block, b.size, b.process ?? 'Free', b.free]));
+    drawChart('cmpChart', 'bar', comparison.map(c => c.algorithm), [
+        {label: 'Processes allocated', data: comparison.map(c => c.allocated), backgroundColor: '#10b981'},
+        {label: 'Total fragmentation', data: comparison.map(c => c.fragmentation), backgroundColor: '#ef4444'}]);
+    document.getElementById('cmpTable').innerHTML = table(
+        ['Algorithm', 'Allocated', 'Internal', 'External', 'Total Frag.', 'Utilization %'],
+        comparison.map(c => [c.algorithm, c.allocated, c.internal, c.external, c.fragmentation, c.utilization]));
+}
+</script>
+{% endblock %}

@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>OS Resource Management &amp; Scheduling Simulator</h1>
+<p class="sub">An interactive simulator for Operating System resource management algorithms.</p>
+<div class="modules">
+    <div class="card"><h2>CPU Scheduling</h2><p>FCFS, SJF, SRTF, Priority, Round Robin</p><a href="/cpu">Open Module</a></div>
+    <div class="card"><h2>Memory Management</h2><p>First Fit, Best Fit, Worst Fit, Next Fit</p><a href="/memory">Open Module</a></div>
+    <div class="card"><h2>Page Replacement</h2><p>FIFO, LRU, Optimal</p><a href="/pages">Open Module</a></div>
+    <div class="card"><h2>Deadlock Management</h2><p>Banker's Algorithm, Deadlock Detection</p><a href="/deadlock">Open Module</a></div>
+</div>
+<div class="panel">
+    <h2>How it works</h2>
+    <p>Each module takes your input, runs the algorithm on the Flask backend, and shows tables,
+    a Gantt chart (CPU) and comparison graphs. All numbers are calculated from your input.</p>
+</div>
+{% endblock %}

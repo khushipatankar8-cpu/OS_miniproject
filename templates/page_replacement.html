@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Page Replacement{% endblock %}
+{% block content %}
+<h1>Page Replacement</h1>
+<div class="panel">
+    <label class="block">Reference string (space separated)<input id="refs" value="7 0 1 2 0 3 0 4 2 3 0 3 2 1 2 0 1 7 0 1"></label>
+    <label>Number of frames <input type="number" id="frames" value="3" min="1"></label>
+    <button id="run" class="btn">Simulate</button>
+</div>
+<div id="error" class="error" hidden></div>
+<div id="output" hidden>
+    <div class="panel"><h2>Summary</h2><div id="summary"></div><canvas id="cmpChart" height="90"></canvas></div>
+    <div id="details"></div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+document.getElementById('run').onclick = async () => {
+    const err = document.getElementById('error'); err.hidden = true;
+    try {
+        const data = await postJSON('/api/pages', {refs: parseNums(document.getElementById('refs').value),
+            frames: document.getElementById('frames').value});
+        render(data);
+    } catch (e) { showError(err, e.message); document.getElementById('output').hidden = true; }
+};
+function render(data) {
+    document.getElementById('output').hidden = false;
+    const names = Object.keys(data);
+    document.getElementById('summary').innerHTML = table(['Algorithm', 'Page Faults', 'Hits', 'Hit Ratio %'],
+        names.map(n => [n, data[n].faults, data[n].hits, data[n].hit_ratio]));
+    drawChart('cmpChart', 'bar', names, [
+        {label: 'Page Faults', data: names.map(n => data[n].faults), backgroundColor: '#ef4444'},
+        {label: 'Hits', data: names.map(n => data[n].hits), backgroundColor: '#10b981'}]);
+    document.getElementById('details').innerHTML = names.map(n => `<div class="panel"><h2>${n} — frame by frame</h2>` +
+        table(['Reference', 'Frames', 'Result'], data[n].steps.map(s =>
+            [s.page, s.frames.map(f => f === null ? '-' : f).join(' '), s.fault ? '❌ Fault' : '✅ Hit'])) + '</div>').join('');
+}
+</script>
+{% endblock %}
